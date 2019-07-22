@@ -234,33 +234,15 @@ class CommonRepository extends BaseRepository
         if (null !== $record) {
             return $record;
         }
-        $local = $this->findPropertiesByProperty(
-            $this->localDatabase,
-            $idFieldName,
-            $identifier,
-            '',
-            '',
-            '',
-            '',
-            'uid',
-            $tableName
-        );
-        $local = empty($local) ? [] : reset($local);
-        $foreign = $this->findPropertiesByProperty(
-            $this->foreignDatabase,
-            $idFieldName,
-            $identifier,
-            '',
-            '',
-            '',
-            '',
-            'uid',
-            $tableName
-        );
-        $foreign = empty($foreign) ? [] : reset($foreign);
-        $records = $this->recordFactory->makeInstance($this, $local, $foreign, [], $tableName, $idFieldName);
+        $recordRepository = GeneralUtility::makeInstance(CombinedRecordRepository::class);
+        $identifiers = GeneralUtility::makeInstance(Identifiers::class, [$idFieldName => $identifier]);
+        $combinedRecords = $recordRepository->findByIdentifiers($identifiers, $tableName);
+        if (empty($combinedRecords)) {
+            return GeneralUtility::makeInstance(NullRecord::class, $tableName);
+        }
+        $record = $combinedRecords[0]->toLegacyRecord();
         $this->identifierFieldName = $previousIdFieldName;
-        return $records;
+        return $record;
     }
 
     /**
@@ -798,7 +780,9 @@ class CommonRepository extends BaseRepository
         if ($this->shouldSkipEnrichingPageRecord($record)) {
             return $record;
         }
+
         $recordIdentifier = $record->getIdentifier();
+
         foreach ($this->tcaService->getAllTableNames($excludedTableNames) as $tableName) {
             // Never search for redirects by their pid!
             if ('sys_redirect' === $tableName) {
@@ -807,7 +791,13 @@ class CommonRepository extends BaseRepository
             if ($this->shouldSkipSearchingForRelatedRecordByTable($record, $tableName)) {
                 continue;
             }
-            $relatedRecords = $this->findByProperty('pid', $recordIdentifier, $tableName);
+            $recordRepository = GeneralUtility::makeInstance(CombinedRecordRepository::class);
+            $identifiers = GeneralUtility::makeInstance(Identifiers::class, ['pid' => $recordIdentifier]);
+            $relatedRecords = [];
+            $records = $recordRepository->findByIdentifiers($identifiers, $tableName);
+            foreach ($records as $relatedRecord) {
+                $relatedRecords[] = $relatedRecord->toLegacyRecord();
+            }
             $record->addRelatedRecords($relatedRecords);
         }
         return $record;

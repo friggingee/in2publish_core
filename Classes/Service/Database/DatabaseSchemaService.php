@@ -29,12 +29,14 @@ namespace In2code\In2publishCore\Service\Database;
  * This copyright notice MUST APPEAR in all copies of the script!
  */
 
+use Doctrine\DBAL\Schema\Column;
 use In2code\In2publishCore\Utility\DatabaseUtility;
 use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use function array_map;
 
 /**
  * Class DatabaseSchemaService
@@ -64,6 +66,22 @@ class DatabaseSchemaService implements SingletonInterface
         $database = DatabaseUtility::buildLocalDatabaseConnection();
 
         return $database ? $database->getSchemaManager()->tablesExist([$tableName]) : false;
+    }
+
+    /**
+     * @param string $tableName
+     *
+     * @return string[]
+     */
+    public function getFieldsForTable(string $tableName): array
+    {
+        $database = DatabaseUtility::buildLocalDatabaseConnection();
+
+        $colNamesFunc = function (Column $column) use ($tableName) {
+            return $column->getFullQualifiedName($tableName);
+        };
+
+        return $database ? array_map($colNamesFunc, $database->getSchemaManager()->listTableColumns($tableName)) : [];
     }
 
     /**
