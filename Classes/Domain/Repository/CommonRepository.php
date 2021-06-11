@@ -31,7 +31,6 @@ namespace In2code\In2publishCore\Domain\Repository;
  */
 
 use Exception;
-use In2code\In2publishCore\Config\ConfigContainer;
 use In2code\In2publishCore\Domain\Factory\RecordFactory;
 use In2code\In2publishCore\Domain\Model\NullRecord;
 use In2code\In2publishCore\Domain\Model\RecordInterface;
@@ -144,11 +143,6 @@ class CommonRepository extends BaseRepository
     protected $signalSlotDispatcher;
 
     /**
-     * @var ConfigContainer
-     */
-    protected $configContainer = null;
-
-    /**
      * @var Connection
      */
     protected $localDatabase = null;
@@ -157,13 +151,6 @@ class CommonRepository extends BaseRepository
      * @var Connection
      */
     protected $foreignDatabase = null;
-
-    /**
-     * Cache for skipped records
-     *
-     * @var array
-     */
-    protected $skipRecords = [];
 
     /**
      * @var array
@@ -193,7 +180,6 @@ class CommonRepository extends BaseRepository
         $this->resourceFactory = GeneralUtility::makeInstance(ResourceFactory::class);
         $this->taskRepository = GeneralUtility::makeInstance(TaskRepository::class);
         $this->signalSlotDispatcher = GeneralUtility::makeInstance(Dispatcher::class);
-        $this->configContainer = GeneralUtility::makeInstance(ConfigContainer::class);
         $this->identifierFieldName = $identifierFieldName ?: $this->identifierFieldName;
         $this->localDatabase = $localDatabase;
         $this->foreignDatabase = $foreignDatabase;
@@ -1928,7 +1914,7 @@ class CommonRepository extends BaseRepository
             }
         }
         return (empty($localProps) && isset($foreignProps['deleted']) && 1 === (int)$foreignProps['deleted'])
-               || (empty($foreignProps) && isset($localProps['deleted']) && 1 === (int)$localProps['deleted']);
+            || (empty($foreignProps) && isset($localProps['deleted']) && 1 === (int)$localProps['deleted']);
     }
 
     /**
@@ -2094,7 +2080,13 @@ class CommonRepository extends BaseRepository
             && !empty($pointerField = $tcaService->getTransOrigPointerField($record->getTableName()))
             && $record->getMergedProperty($pointerField) > 0
         ) {
-            $translationOriginals = $record->getRelatedRecordByTableAndProperty($record->getTableName(), 'uid', $record->getMergedProperty($pointerField));
+            $translationOriginals = $record->getRelatedRecordByTableAndProperty(
+                $record->getTableName(),
+                'uid',
+                $record->getMergedProperty(
+                    $pointerField
+                )
+            );
             foreach ($translationOriginals as $translationOriginal) {
                 $this->publishRecordRecursiveInternal($translationOriginal, $excludedTables);
             }
