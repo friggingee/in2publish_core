@@ -43,12 +43,17 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
 
 use function array_column;
+use function array_combine;
 use function array_key_exists;
+use function array_keys;
 use function array_merge;
 use function array_slice;
+use function call_user_func_array;
+use function count;
 use function explode;
 use function implode;
 use function is_array;
+use function is_int;
 use function json_encode;
 use function preg_match;
 use function spl_object_id;
@@ -62,6 +67,8 @@ use function trigger_error;
 use function trim;
 
 use const E_USER_DEPRECATED;
+use const SORT_ASC;
+use const SORT_DESC;
 
 /**
  * Class BaseRepository. Inherit from this repository to execute methods
@@ -136,8 +143,10 @@ abstract class BaseRepository implements SingletonInterface
         $this->logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(static::class);
         $this->tcaService = GeneralUtility::makeInstance(TcaService::class);
         $this->configContainer = GeneralUtility::makeInstance(ConfigContainer::class);
-        $preloadTables = $this->configContainer->get('factory.preload');
-        $this->preloadTables = array_combine($preloadTables, $preloadTables);
+        $preloadFeature = $this->configContainer->get('factory.preload');
+        if ($preloadFeature['enable']) {
+            $this->preloadTables = array_combine($preloadFeature['tables'], $preloadFeature['tables']);
+        }
         $this->parser = GeneralUtility::makeInstance(SimpleWhereClauseParsingService::class);
     }
 
